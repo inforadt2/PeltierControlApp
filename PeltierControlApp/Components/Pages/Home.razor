@@ -1,0 +1,143 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject PeltierService Service
+
+<PageTitle>Peltier Control</PageTitle>
+
+<div class="container-fluid p-4">
+    <Heading Size="HeadingSize.Is2" Margin="Margin.Is3.FromBottom">Peltier Control System</Heading>
+
+    <Row>
+        <div class="col-md-6">
+            <Card Background="Background.Primary" WhiteText Margin="Margin.Is3.FromBottom">
+                <CardBody TextAlignment="TextAlignment.Center">
+                    <CardSubtitle>현재 제어 온도 (DHT)</CardSubtitle>
+                    <Heading Size="HeadingSize.Is1">@Service.Current.DhtT.ToString("F1") °C</Heading>
+                </CardBody>
+            </Card>
+
+            <Row>
+                <div class="col-6">
+                    <Card>
+                        <CardBody TextAlignment="TextAlignment.Center">
+                            <CardSubtitle>액체 온도 (Monitor)</CardSubtitle>
+                            <Heading Size="HeadingSize.Is3" TextColor="TextColor.Success">@Service.Current.Liq.ToString("F1") °C</Heading>
+                        </CardBody>
+                    </Card>
+                </div>
+                <div class="col-6">
+                    <Card>
+                        <CardBody TextAlignment="TextAlignment.Center">
+                            <CardSubtitle>습도</CardSubtitle>
+                            <Heading Size="HeadingSize.Is3" TextColor="TextColor.Info">@Service.Current.Hum.ToString("F1") %</Heading>
+                        </CardBody>
+                    </Card>
+                </div>
+            </Row>
+        </div>
+
+        <div class="col-md-6">
+            <Card Shadow="Shadow.Default">
+                <CardHeader><CardSubtitle>Target Settings</CardSubtitle></CardHeader>
+                <CardBody>
+                    <Field>
+                        <FieldLabel>목표 온도 설정 (°C)</FieldLabel>
+                        <NumericEdit TValue="double" @bind-Value="inputTarget" Decimals="1" />
+                    </Field>
+                    <Button Color="Color.Primary" Block Clicked="() => Service.SetTarget(inputTarget)" Margin="Margin.Is2.FromTop">설정 적용</Button>
+                    <Button Color="Color.Danger" Block Clicked="() => Service.StopDevice()" Margin="Margin.Is2.FromTop">긴급 정지</Button>
+
+                    <div class="mt-4">
+                        <Alert Color="Color.Info" Visible="true">
+                            현재 출력: <strong>@Service.Current.Pwr %</strong> |
+                            목표 온도: @Service.Current.Set °C
+                        </Alert>
+                        @if (Service.Current.Set > 0 && Math.Abs(Service.Current.DhtT - Service.Current.Set) < 0.5)
+                        {
+                            <Alert Color="Color.Success" Visible="true">✅ 목표 온도 도달</Alert>
+                        }
+                    </div>
+                </CardBody>
+            </Card>
+        </div>
+    </Row>
+</div>
+
+@code {
+    private double inputTarget = 30.0;
+    protected override void OnInitialized() { Service.OnDataUpdated += Refresh; }
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
+    public void Dispose() { Service.OnDataUpdated -= Refresh; }
+}
+@* @page "/"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject PeltierService Service
+
+<PageTitle>Peltier Control</PageTitle>
+
+<div class="container-fluid p-4">
+    <Heading Size="HeadingSize.Is2" Margin="Margin.Is3.FromBottom">Peltier Control System</Heading>
+
+    <Row>
+        <div class="col-md-6">
+            <Card Background="Background.Primary" WhiteText Margin="Margin.Is3.FromBottom">
+                <CardBody TextAlignment="TextAlignment.Center">
+                    <CardSubtitle>프로브 온도 (Probe)</CardSubtitle>
+                    <Heading Size="HeadingSize.Is1">@Service.Current.Liq.ToString("F1") °C</Heading>
+                </CardBody>
+            </Card>
+
+            <Row>
+                <div class="col-6">
+                    <Card>
+                        <CardBody TextAlignment="TextAlignment.Center">
+                            <CardSubtitle>주변 온도</CardSubtitle>
+                            <Heading Size="HeadingSize.Is3" TextColor="TextColor.Success">@Service.Current.DhtT.ToString("F1") °C</Heading>
+                        </CardBody>
+                    </Card>
+                </div>
+                <div class="col-6">
+                    <Card>
+                        <CardBody TextAlignment="TextAlignment.Center">
+                            <CardSubtitle>습도</CardSubtitle>
+                            <Heading Size="HeadingSize.Is3" TextColor="TextColor.Info">@Service.Current.Hum.ToString("F1") %</Heading>
+                        </CardBody>
+                    </Card>
+                </div>
+            </Row>
+        </div>
+
+        <div class="col-md-6">
+            <Card Shadow="Shadow.Default">
+                <CardHeader><CardSubtitle>Target Settings</CardSubtitle></CardHeader>
+                <CardBody>
+                    <Field>
+                        <FieldLabel>목표 온도 설정 (°C)</FieldLabel>
+                        <NumericEdit TValue="double" @bind-Value="inputTarget" Decimals="1" />
+                    </Field>
+                    <Button Color="Color.Primary" Block Clicked="() => Service.SetTarget(inputTarget)" Margin="Margin.Is2.FromTop">설정 적용</Button>
+                    <Button Color="Color.Danger" Block Clicked="() => Service.StopDevice()" Margin="Margin.Is2.FromTop">긴급 정지</Button>
+
+                    <div class="mt-4">
+                        <Alert Color="Color.Info" Visible="true">
+                            현재 출력: <strong>@Service.Current.Pwr %</strong> | 목표 온도: @Service.Current.Set °C
+                        </Alert>
+                        @if (Service.Current.Set > 0 && Service.Current.Liq >= Service.Current.Set)
+                        {
+                            <Alert Color="Color.Success" Visible="true">✅ 목표 온도 도달 - 정지됨</Alert>
+                        }
+                    </div>
+                </CardBody>
+            </Card>
+        </div>
+    </Row>
+</div>
+
+@code {
+    private double inputTarget = 30.0;
+    protected override void OnInitialized() => Service.OnDataUpdated += Refresh;
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
+    public void Dispose() => Service.OnDataUpdated -= Refresh;
+} *@

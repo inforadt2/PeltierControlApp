@@ -1,0 +1,19 @@
+﻿@inherits LayoutComponentBase
+
+<Layout Sider>
+    <LayoutSider>
+        <LayoutSiderContent>
+            <div class="p-3 text-white">
+                <h4>Peltier Menu</h4>
+                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Home</NavLink>
+            </div>
+        </LayoutSiderContent>
+    </LayoutSider>
+    <Layout>
+        <LayoutHeader Fixed>
+        </LayoutHeader>
+        <LayoutContent Padding="Padding.Is4">
+            @Body
+        </LayoutContent>
+    </Layout>
+</Layout>

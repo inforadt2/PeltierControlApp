@@ -2,9 +2,9 @@
 
 public class PeltierData
 {
-    public double Liq { get; set; }   // 프로브 온도 (liq)
-    public double Hum { get; set; }   // 습도 (hum)
-    public double DhtT { get; set; }  // 온습도계 온도 (dhtT)
-    public double Set { get; set; }   // 설정된 목표 온도 (set)
-    public int Pwr { get; set; }      // 현재 출력 % (pwr)
+    public double Pt100 { get; set; }  // PT100 온도 (메인 표시용)
+    public double Hum { get; set; }    // SEN0546 습도
+    public double ShtT { get; set; }   // SEN0546 온도 (백업용)
+    public double Set { get; set; }    // 목표 온도
+    public int Pwr { get; set; }       // 출력 %
 }

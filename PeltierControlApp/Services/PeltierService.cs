@@ -16,7 +16,7 @@ public class PeltierService : IDisposable
         {
 
             _port = new SerialPort("COM4", 9600);
-            _port.ReadTimeout = 1000; // 0.5초 타임아웃
+            _port.ReadTimeout = 2000; // 0.5초 타임아웃
             _port.Open();
             _port.DiscardInBuffer();
             _port.DataReceived += HandleData;
@@ -45,15 +45,15 @@ public class PeltierService : IDisposable
                 Current = data;
 
                 // [핵심 수정] 목표 온도가 설정되어 있을 때만 작동
-                if (Current.Set > 0)
-                {
-                    // 현재 온도(ShtT)와 목표 온도(Set)의 차이가 0.5도 이내면 정지
-                    // 절댓값(Math.Abs)을 사용하면 가열/냉각 구분 없이 정교하게 멈춥니다.
-                    if (Math.Abs(Current.Set - Current.ShtT) <= 0.5)
-                    {
-                        StopDevice(); // POWER:OFF 및 SET_TEMP:0.0 전송
-                    }
-                }
+                //if (Current.Set > 0)
+                //{
+                //    // 현재 온도(ShtT)와 목표 온도(Set)의 차이가 0.5도 이내면 정지
+                //    // 절댓값(Math.Abs)을 사용하면 가열/냉각 구분 없이 정교하게 멈춥니다.
+                //    if (Math.Abs(Current.Set - Current.ShtT) <= 0.5)
+                //    {
+                //        StopDevice(); // POWER:OFF 및 SET_TEMP:0.0 전송
+                //    }
+                //}
                 OnDataUpdated?.Invoke();
             }
         }

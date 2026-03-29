@@ -1,19 +1,23 @@
 ﻿@inherits LayoutComponentBase
 
-<Layout Sider>
-    <LayoutSider>
-        <LayoutSiderContent>
-            <div class="p-3 text-white">
-                <h4>Peltier Menu</h4>
-                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Home</NavLink>
-            </div>
-        </LayoutSiderContent>
-    </LayoutSider>
-    <Layout>
-        <LayoutHeader Fixed>
-        </LayoutHeader>
-        <LayoutContent Padding="Padding.Is4">
+<div class="page d-flex flex-column flex-md-row">
+    <div class="sidebar bg-dark text-white p-3" style="min-width: 250px; min-height: 100vh;">
+        <h4>펠티어 제어 센터</h4>
+        <hr />
+        <nav class="nav flex-column">
+            <NavLink class="nav-link text-white py-2" href="" Match="NavLinkMatch.All">
+                🏠 대시보드
+            </NavLink>
+        </nav>
+    </div>
+
+    <main class="flex-grow-1 bg-light">
+        <div class="top-row px-4 border-bottom bg-white d-flex align-items-center" style="height: 3.5rem;">
+            <span class="text-muted">실시간 모니터링 시스템</span>
+        </div>
+
+        <article class="content px-4 py-4">
             @Body
-        </LayoutContent>
-    </Layout>
-</Layout>
+        </article>
+    </main>
+</div>

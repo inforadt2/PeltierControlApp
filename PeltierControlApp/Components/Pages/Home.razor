@@ -1,62 +1,67 @@
 ﻿@page "/"
 @using PeltierControlApp.Services
 @inject PeltierService Service
-@inject PeltierService PeltierService
 @implements IDisposable
-<PageTitle>Bubbler Temp.Cotrl Dashboard</PageTitle>
-<div class="container mt-4">
-    <div class="card shadow p-4 text-center">
-        <h2 class="mb-4">🌡️ Bubbler Temp.Cotrl Dashboard</h2>
 
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="p-4 border rounded bg-primary text-white h-100">
-                    <h5>현재 온도 (PT100)</h5>
-                    <h1 class="display-2">@Service.Current.Pt100.ToString("F1") °C</h1>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="p-4 border rounded bg-info text-white h-100">
-                    <h5>현재 습도 (SEN0546)</h5>
-                    <h1 class="display-2">@Service.Current.Hum.ToString("F0") %</h1>
-                </div>
-            </div>
+<PageTitle>펠티어 제어 대시보드</PageTitle>
+
+<div class="container py-4">
+    <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="card-header bg-primary text-white py-3">
+            <h5 class="mb-0 fw-bold text-center">🌡️ 실시간 상태 모니터링</h5>
         </div>
 
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="p-3 border rounded bg-secondary text-white h-100">
-                    <h5>설정된 목표 온도</h5>
-                    <h1 class="display-4">@Service.Current.Set.ToString("F1") °C</h1>
+        <div class="card-body bg-white p-4">
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="p-4 border rounded-3 bg-light text-center shadow-sm">
+                        <p class="text-muted mb-1 small fw-bold">현재 온도 (PT100)</p>
+                        <h1 class="display-3 fw-bold text-primary mb-0">@Service.Current.Pt100.ToString("F1")<span class="fs-4">°C</span></h1>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-4 border rounded-3 bg-light text-center shadow-sm">
+                        <p class="text-muted mb-1 small fw-bold">현재 습도 (SEN0546)</p>
+                        <h1 class="display-3 fw-bold text-info mb-0">@Service.Current.Hum.ToString("F0")<span class="fs-4">%</span></h1>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="p-3 border rounded bg-warning text-dark h-100">
-                    <h5>파워 퍼센테이지</h5>
-                    <h1 class="display-4">@Service.Current.Pwr %</h1>
-                </div>
-            </div>
-        </div>
 
-        <div class="p-4 border rounded bg-light">
-            <div class="row align-items-center justify-content-center">
-                <div class="col-md-5">
-                    <label class="form-label fw-bold">목표 온도 입력</label>
-                    <input type="number" @bind="inputTarget" class="form-control form-control-lg text-center" step="0.5" />
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 bg-white shadow-sm d-flex justify-content-between align-items-center">
+                        <span class="text-secondary small fw-bold">설정 온도</span>
+                        <span class="h4 fw-bold mb-0">@Service.Current.Set.ToString("F1")°C</span>
+                    </div>
                 </div>
-                <div class="col-md-4 mt-4 mt-md-0">
-                    @if (Service.Current.Set == 0)
-                    {
-                        <button class="btn btn-success btn-lg w-100 py-3 shadow" @onclick="HandleStart">
-                            <i class="fas fa-play me-2"></i>작동 시작
-                        </button>
-                    }
-                    else
-                    {
-                        <button class="btn btn-danger btn-lg w-100 py-3 shadow" @onclick="HandleStop">
-                            <i class="fas fa-stop me-2"></i>작동 정지
-                        </button>
-                    }
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 bg-white shadow-sm d-flex justify-content-between align-items-center">
+                        <span class="text-secondary small fw-bold">파워 출력</span>
+                        <span class="h4 fw-bold text-warning mb-0">@Service.Current.Pwr%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-top">
+                <div class="row g-3 align-items-end justify-content-center">
+                    <div class="col-md-5">
+                        <label class="form-label small fw-bold text-dark">목표 온도 설정 (°C)</label>
+                        <input type="number" @bind="inputTarget" class="form-control form-control-lg border-primary text-center" step="0.5" />
+                    </div>
+                    <div class="col-md-4">
+                        @if (Service.Current.Set == 0)
+                        {
+                            <button class="btn btn-success btn-lg w-100 py-3 fw-bold shadow-sm" @onclick="HandleStart">
+                                ▶️ 가동 시작
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-danger btn-lg w-100 py-3 fw-bold shadow-sm" @onclick="HandleStop">
+                                ⏹️ 가동 정지
+                            </button>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
@@ -64,35 +69,33 @@
 </div>
 
 @code {
-    private double inputTarget = 25.0;
+    private double inputTarget = 20.0;
 
     protected override void OnInitialized()
     {
-        PeltierService.OnDataUpdated += NotifyDataChanged;
+        Service.OnDataUpdated += NotifyDataChanged; //
     }
 
     private async void NotifyDataChanged()
     {
-        await InvokeAsync(StateHasChanged);
+        await InvokeAsync(StateHasChanged); //
     }
 
     private void HandleStart()
     {
-        // 입력된 온도를 먼저 전송하고 시작 명령을 보냄
-        Service.SetTarget(inputTarget);
-        Service.StartDevice();
-        StateHasChanged();
+        Service.SetTarget(inputTarget); //
+        Service.StartDevice(); //
     }
 
     private void HandleStop()
     {
-        Service.StopDevice();
-        Service.Current.Set = 0; // 즉시 UI에서 설정온도를 0으로 초기화
+        Service.StopDevice(); //
+        Service.Current.Set = 0; // 즉시 UI 초기화
         StateHasChanged();
     }
 
     public void Dispose()
     {
-        PeltierService.OnDataUpdated -= NotifyDataChanged;
+        Service.OnDataUpdated -= NotifyDataChanged; //
     }
 }

@@ -7,9 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Blazorise.Bootstrap" Version="1.8.10" />
-    <PackageReference Include="Blazorise.Components" Version="1.8.10" />
-    <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.8.10" />
     <PackageReference Include="System.IO.Ports" Version="10.0.2" />
   </ItemGroup>
 

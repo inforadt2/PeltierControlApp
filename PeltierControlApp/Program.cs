@@ -5,7 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(8085);
+    options.Listen(System.Net.IPAddress.Any, 8085);
 });
 
 builder.Services.AddRazorComponents()

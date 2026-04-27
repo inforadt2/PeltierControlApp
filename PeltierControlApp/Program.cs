@@ -18,6 +18,7 @@ var app = builder.Build();
 
 app.Use(async (context, next) =>
 {
+    context.Response.Headers.Connection = "close";
     Console.WriteLine($"[REQ] {context.Connection.RemoteIpAddress} → {context.Request.Method} {context.Request.Path}");
     await next();
     Console.WriteLine($"[RES] {context.Connection.RemoteIpAddress} ← {context.Response.StatusCode}");

@@ -3,7 +3,10 @@ using PeltierControlApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.UseUrls("http://0.0.0.0:8085");
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(8085);
+});
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

@@ -3,7 +3,7 @@ using PeltierControlApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.UseUrls("http://0.0.0.0:5186");
+builder.WebHost.UseUrls("http://0.0.0.0:5186", "https://0.0.0.0:7073");
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

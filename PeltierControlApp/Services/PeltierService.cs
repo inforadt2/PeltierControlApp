@@ -9,7 +9,6 @@ public class PeltierService : IDisposable
     private SerialPort? _port;
     private readonly SettingsService _settings;
     private Timer? _loggingTimer;
-    private List<string[]> _logBuffer = [];
     private string? _currentLogFile;
 
     public PeltierData Current { get; private set; } = new();
@@ -88,22 +87,33 @@ public class PeltierService : IDisposable
 
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         _currentLogFile = Path.Combine(folder, $"peltier_{timestamp}.csv");
-        _logBuffer = [["PC시간", "현재 온도(°C)", "타겟 온도(°C)", "현재 습도(%)", "파워(%)"]];
+
+        // 헤더 작성
+        File.WriteAllText(_currentLogFile, "PC시간,현재 온도(°C),타겟 온도(°C),현재 습도(%),파워(%)\n", System.Text.Encoding.UTF8);
 
         var interval = _settings.Settings.LoggingIntervalSeconds * 1000;
-        _loggingTimer = new Timer(LogData, null, 0, interval);
+        _loggingTimer = new Timer(LogData, null, interval, interval);
         IsLogging = true;
     }
 
     private void LogData(object? state)
     {
-        _logBuffer.Add([
-            DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-            Current.Pt100.ToString("F1"),
-            Current.Set.ToString(),
-            Current.Hum.ToString("F1"),
-            Current.Pwr.ToString()
-        ]);
+        if (_currentLogFile == null) return;
+        try
+        {
+            var line = string.Join(",", [
+                DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                Current.Pt100.ToString("F1"),
+                Current.Set.ToString(),
+                Current.Hum.ToString("F1"),
+                Current.Pwr.ToString()
+            ]) + "\n";
+            File.AppendAllText(_currentLogFile, line, System.Text.Encoding.UTF8);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Logging write error: {ex.Message}");
+        }
     }
 
     private void StopLogging()
@@ -111,20 +121,7 @@ public class PeltierService : IDisposable
         _loggingTimer?.Dispose();
         _loggingTimer = null;
         IsLogging = false;
-
-        if (_currentLogFile != null && _logBuffer.Count > 1)
-        {
-            try
-            {
-                var lines = _logBuffer.Select(row => string.Join(",", row));
-                File.WriteAllLines(_currentLogFile, lines, System.Text.Encoding.UTF8);
-                Console.WriteLine($"Log saved: {_currentLogFile}");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Logging save error: {ex.Message}");
-            }
-        }
+        Console.WriteLine($"Log saved: {_currentLogFile}");
         _currentLogFile = null;
     }
 

@@ -1,0 +1,87 @@
+@page "/logs/view"
+@using PeltierControlApp.Services
+@inject SettingsService SettingsService
+
+<PageTitle>@fileName</PageTitle>
+
+<div class="container-fluid py-3">
+    @if (errorMessage != null)
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+    else if (rows.Count == 0)
+    {
+        <div class="text-center text-muted py-5">데이터가 없습니다.</div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0 text-muted">📄 @fileName</h6>
+            <span class="badge bg-secondary">@((rows.Count - 1)) 건</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        @foreach (var col in rows[0])
+                        {
+                            <th>@col</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in rows.Skip(1))
+                    {
+                        <tr>
+                            @foreach (var cell in row)
+                            {
+                                <td>@cell</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "file")]
+    public string? FileName { get; set; }
+
+    private string fileName = "";
+    private List<string[]> rows = [];
+    private string? errorMessage;
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrWhiteSpace(FileName))
+        {
+            errorMessage = "파일명이 지정되지 않았습니다.";
+            return;
+        }
+
+        // 경로 조작 방지: 파일명만 허용
+        fileName = Path.GetFileName(FileName);
+        var folder = SettingsService.Settings.LoggingFolder;
+        var filePath = Path.Combine(folder, fileName);
+
+        if (!File.Exists(filePath))
+        {
+            errorMessage = $"파일을 찾을 수 없습니다: {fileName}";
+            return;
+        }
+
+        try
+        {
+            rows = File.ReadAllLines(filePath, System.Text.Encoding.UTF8)
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .Select(l => l.Split(','))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"파일 읽기 오류: {ex.Message}";
+        }
+    }
+}

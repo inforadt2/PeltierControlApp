@@ -1,6 +1,7 @@
-﻿@page "/"
+@page "/"
 @using PeltierControlApp.Services
 @inject PeltierService Service
+@inject SettingsService SettingsService
 @implements IDisposable
 
 <PageTitle>펠티어 제어 대시보드</PageTitle>
@@ -42,6 +43,15 @@
                 </div>
             </div>
 
+            @if (Service.IsLogging)
+            {
+                <div class="alert alert-success d-flex align-items-center gap-2 py-2 mb-3">
+                    <span class="spinner-grow spinner-grow-sm text-success" role="status"></span>
+                    <span class="small fw-bold">로깅 중 — @SettingsService.Settings.LoggingFolder</span>
+                    <button class="btn btn-sm btn-outline-success ms-auto" @onclick="OpenLogFolder">📂 폴더 보기</button>
+                </div>
+            }
+
             <div class="p-4 border-top">
                 <div class="row g-3 align-items-end justify-content-center">
                     <div class="col-md-5">
@@ -73,29 +83,41 @@
 
     protected override void OnInitialized()
     {
-        Service.OnDataUpdated += NotifyDataChanged; //
+        Service.OnDataUpdated += NotifyDataChanged;
     }
 
     private async void NotifyDataChanged()
     {
-        await InvokeAsync(StateHasChanged); //
+        await InvokeAsync(StateHasChanged);
     }
 
     private void HandleStart()
     {
-        Service.SetTarget(inputTarget); //
-        Service.StartDevice(); //
+        Service.SetTarget(inputTarget);
+        Service.StartDevice();
     }
 
     private void HandleStop()
     {
-        Service.StopDevice(); //
-        Service.Current.Set = 0; // 즉시 UI 초기화
+        Service.StopDevice();
+        Service.Current.Set = 0;
         StateHasChanged();
+    }
+
+    private void OpenLogFolder()
+    {
+        var folder = SettingsService.Settings.LoggingFolder;
+        try
+        {
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
+            System.Diagnostics.Process.Start("explorer.exe", folder);
+        }
+        catch { }
     }
 
     public void Dispose()
     {
-        Service.OnDataUpdated -= NotifyDataChanged; //
+        Service.OnDataUpdated -= NotifyDataChanged;
     }
 }

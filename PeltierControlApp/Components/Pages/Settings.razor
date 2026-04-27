@@ -1,0 +1,85 @@
+@page "/settings"
+@using PeltierControlApp.Services
+@inject SettingsService SettingsService
+
+<PageTitle>시스템 설정</PageTitle>
+
+<div class="container py-4">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-secondary text-white py-3">
+            <h5 class="mb-0 fw-bold text-center">⚙️ 시스템 설정</h5>
+        </div>
+        <div class="card-body p-4">
+
+            @if (saved)
+            {
+                <div class="alert alert-success alert-dismissible">
+                    ✅ 설정이 저장되었습니다. 포트 변경은 앱 재시작 후 적용됩니다.
+                </div>
+            }
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">시리얼 포트</label>
+                <input type="text" class="form-control" @bind="comPort" placeholder="예: COM4" />
+                <div class="form-text text-muted">펠티어 장치가 연결된 COM 포트 번호</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">로깅 저장 폴더</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" @bind="loggingFolder" placeholder="예: C:\PeltierLogs" />
+                    <button class="btn btn-outline-secondary" type="button" @onclick="OpenLogFolder">
+                        📂 폴더 열기
+                    </button>
+                </div>
+                <div class="form-text text-muted">CSV 로그 파일이 저장될 폴더 경로</div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold">로깅 주기 (초)</label>
+                <input type="number" class="form-control" style="max-width:150px" @bind="loggingInterval" min="1" max="60" />
+                <div class="form-text text-muted">데이터 기록 주기 (1~60초)</div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" @onclick="SaveSettings">💾 저장</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private string comPort = "";
+    private string loggingFolder = "";
+    private int loggingInterval = 1;
+    private bool saved = false;
+
+    protected override void OnInitialized()
+    {
+        comPort = SettingsService.Settings.ComPort;
+        loggingFolder = SettingsService.Settings.LoggingFolder;
+        loggingInterval = SettingsService.Settings.LoggingIntervalSeconds;
+    }
+
+    private void SaveSettings()
+    {
+        SettingsService.Settings.ComPort = comPort;
+        SettingsService.Settings.LoggingFolder = loggingFolder;
+        SettingsService.Settings.LoggingIntervalSeconds = loggingInterval;
+        SettingsService.Save();
+        saved = true;
+    }
+
+    private void OpenLogFolder()
+    {
+        var folder = SettingsService.Settings.LoggingFolder;
+        try
+        {
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
+            System.Diagnostics.Process.Start("explorer.exe", folder);
+        }
+        catch { }
+    }
+}

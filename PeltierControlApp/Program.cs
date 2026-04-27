@@ -19,6 +19,8 @@ var app = builder.Build();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+app.MapGet("/ping", () => "pong");
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

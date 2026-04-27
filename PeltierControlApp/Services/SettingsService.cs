@@ -12,6 +12,8 @@ public class SettingsService
     {
         _settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "peltiersettings.json");
         Load();
+        if (!File.Exists(_settingsPath))
+            Save();
     }
 
     public void Load()

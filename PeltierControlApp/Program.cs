@@ -16,6 +16,13 @@ builder.Services.AddSingleton<PeltierService>();
 
 var app = builder.Build();
 
+app.Use(async (context, next) =>
+{
+    Console.WriteLine($"[REQ] {context.Connection.RemoteIpAddress} → {context.Request.Method} {context.Request.Path}");
+    await next();
+    Console.WriteLine($"[RES] {context.Connection.RemoteIpAddress} ← {context.Response.StatusCode}");
+});
+
 app.UseStaticFiles();
 app.UseAntiforgery();
 

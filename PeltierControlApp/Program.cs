@@ -3,7 +3,7 @@ using PeltierControlApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.UseUrls("https://0.0.0.0:5186");
+builder.WebHost.UseUrls("https://localhost:5186", "http://0.0.0.0:5186");
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -27,7 +27,7 @@ app.Lifetime.ApplicationStarted.Register(() =>
         await Task.Delay(500);
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
         {
-            FileName = "https://localhost:5186",
+            FileName = "https://localhost:5186",  // 호스트 PC는 HTTPS로 자동 실행
             UseShellExecute = true
         });
     });

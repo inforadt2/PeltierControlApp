@@ -3,6 +3,8 @@ using PeltierControlApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.WebHost.UseUrls("http://0.0.0.0:5186");
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
@@ -11,17 +13,24 @@ builder.Services.AddSingleton<PeltierService>();
 
 var app = builder.Build();
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();
-}
-
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// 앱 시작 후 브라우저 자동 실행
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    Task.Run(async () =>
+    {
+        await Task.Delay(500);
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "http://localhost:5186",
+            UseShellExecute = true
+        });
+    });
+});
 
 app.Run();

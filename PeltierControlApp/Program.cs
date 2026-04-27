@@ -3,7 +3,7 @@ using PeltierControlApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.UseUrls("http://0.0.0.0:5186");
+builder.WebHost.UseUrls("http://0.0.0.0:8085");
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -26,7 +26,7 @@ app.Lifetime.ApplicationStarted.Register(() =>
         await Task.Delay(500);
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
         {
-            FileName = "http://localhost:5186",
+            FileName = "http://localhost:8085",
             UseShellExecute = true
         });
     });

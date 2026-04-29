@@ -110,7 +110,13 @@
 
 @code {
     private double inputTarget = 20.0;
-    private string userIp => HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+    private string userIp = "Unknown";
+
+    protected override void OnInitialized()
+    {
+        Service.OnDataUpdated += NotifyDataChanged;
+        userIp = HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+    }
 
     // 5. 제어권 확인 로직
     private async Task OnControlAction(Action action)

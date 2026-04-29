@@ -13,21 +13,12 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddSingleton<SettingsService>();
 builder.Services.AddSingleton<PeltierService>();
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
-app.Use(async (context, next) =>
-{
-    context.Response.Headers.Connection = "close";
-    Console.WriteLine($"[REQ] {context.Connection.RemoteIpAddress} → {context.Request.Method} {context.Request.Path}");
-    await next();
-    Console.WriteLine($"[RES] {context.Connection.RemoteIpAddress} ← {context.Response.StatusCode}");
-});
-
 app.UseStaticFiles();
 app.UseAntiforgery();
-
-app.MapGet("/ping", () => "pong");
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

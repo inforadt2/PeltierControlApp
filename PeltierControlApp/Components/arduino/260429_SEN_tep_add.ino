@@ -18,20 +18,19 @@ Adafruit_MAX31865 rtd = Adafruit_MAX31865(MAX_CS_PIN, 11, 12, 13);
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
-
 double Setpoint = 0.0, Input, Output;
 
 // [튜닝] Kp는 낮추고, Ki는 아주 작게, Kd는 높여서 브레이크를 강하게 잡습니다.
 double Kp = 8.0;  
 double Ki = 0.05; 
-double Kd = 15.0; 
+double Kd = 15.0;
 
-float tempPT100 = 0.0, humidity = 0.0, tempDS = 0.0;
+// [수정] SEN0546(SHT31) 온도를 저장할 변수(tempSHT) 추가
+float tempPT100 = 0.0, humidity = 0.0, tempDS = 0.0, tempSHT = 0.0;
 bool isSystemOn = false; 
 int currentPower = 0;
 int powerRampStep = 10; // 반응 속도를 위해 램프 단계를 높임
 unsigned long lastUpdate = 0;
-
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
 void setup() {
@@ -41,7 +40,7 @@ void setup() {
   
   lcd.init(); lcd.backlight();
   sht31.begin(0x44);
-  rtd.begin(MAX31865_3WIRE); 
+  rtd.begin(MAX31865_3WIRE);
   sensors.begin();
   
   pinMode(RPWM_PIN, OUTPUT); pinMode(LPWM_PIN, OUTPUT);
@@ -50,7 +49,7 @@ void setup() {
   
   myPID.SetMode(AUTOMATIC);
   myPID.SetOutputLimits(-255, 255); 
-  myPID.SetSampleTime(1000); 
+  myPID.SetSampleTime(1000);
 }
 
 void loop() {
@@ -64,19 +63,20 @@ void loop() {
 
   if (millis() - lastUpdate > 1000) {
     lastUpdate = millis();
-
     tempPT100 = rtd.temperature(100.0, 430.0);
     tempDS = sensors.getTempCByIndex(0);
     sensors.requestTemperatures();
+    
+    // [수정] 습도와 함께 온도도 측정하여 변수에 저장
     float h = sht31.readHumidity();
+    float t = sht31.readTemperature();
     if (!isnan(h)) humidity = h;
+    if (!isnan(t)) tempSHT = t;
 
     if (isSystemOn) {
       Input = tempPT100;
-
       // [핵심] 목표 온도보다 낮아지면(오버슈트 발생 시) PID 적분항을 강제로 억제
       if (Input < Setpoint && Output < 0) {
-        // 냉각 중인데 목표보다 낮아졌다면 출력을 급격히 줄임
          myPID.SetMode(MANUAL);
          Output = Output * 0.2; // 출력을 20% 수준으로 급감
          myPID.SetMode(AUTOMATIC);
@@ -94,13 +94,11 @@ void loop() {
 
 void controlPeltier(double targetOut) {
   int absPower = (int)abs(targetOut);
-  
   if (currentPower < absPower) currentPower += powerRampStep;
   else if (currentPower > absPower) currentPower -= powerRampStep;
   currentPower = constrain(currentPower, 0, 255);
 
   // 배선을 바꾸셨으므로 현재 방향에 맞춰 작동
-  // targetOut이 음수(-)일 때 냉각(LPWM)이 작동하는 구조
   if (targetOut > 1.0) { 
     analogWrite(RPWM_PIN, 0); 
     analogWrite(LPWM_PIN, currentPower); 
@@ -123,7 +121,9 @@ void stopPeltier() {
 void sendJson() {
   int pwrPercent = map(currentPower, 0, 255, 0, 100);
   Serial.print("{\"pt100\":"); Serial.print(tempPT100, 1);
-  Serial.print(",\"hum\":"); Serial.print(humidity, 1); // 습도 추가
+  Serial.print(",\"hum\":"); Serial.print(humidity, 1);
+  // [수정] SEN0546(SHT31) 온도(senT)를 JSON 데이터에 추가
+  Serial.print(",\"senT\":"); Serial.print(tempSHT, 1); 
   Serial.print(",\"ds\":"); Serial.print(tempDS, 1);
   Serial.print(",\"set\":"); Serial.print(Setpoint, 1);
   Serial.print(",\"pwr\":"); Serial.print(pwrPercent);
@@ -134,7 +134,6 @@ void updateLCD() {
   int pwrPercent = map(currentPower, 0, 255, 0, 100);
   static int refreshCounter = 0;
   refreshCounter++;
-
   if (refreshCounter >= 5) {
     lcd.init(); lcd.backlight();
     refreshCounter = 0;
@@ -142,12 +141,13 @@ void updateLCD() {
     lcd.clear();
   }
 
+  // [유지] 디스플레이는 변경하지 않음
   lcd.setCursor(0, 0);
   lcd.print("P:"); lcd.print(tempPT100, 1);
   lcd.print(" SV:"); lcd.print(Setpoint, 1);
   
   lcd.setCursor(0, 1);
   lcd.print("H:"); lcd.print((int)humidity);
-  lcd.print("% D:"); lcd.print((int)(tempDS + 0.5)); 
+  lcd.print("% D:"); lcd.print((int)(tempDS + 0.5));
   lcd.print(" W:"); lcd.print(pwrPercent); lcd.print("%");
 }

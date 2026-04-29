@@ -114,7 +114,6 @@ public class PeltierService : IDisposable
     private void StartLogging()
     {
         var folder = _settings.Settings.LoggingFolder;
-        // 경로가 절대 경로가 아닐 경우를 대비해 루트 경로 결합
         var fullPath = Path.IsPathRooted(folder) ? folder : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, folder);
 
         try
@@ -124,7 +123,9 @@ public class PeltierService : IDisposable
             var filePath = Path.Combine(fullPath, $"peltier_{timestamp}.csv");
 
             _logWriter = new StreamWriter(filePath, true, System.Text.Encoding.UTF8);
-            _logWriter.WriteLine("PC시간,현재 온도(°C),타겟 온도(°C),현재 습도(%),파워(%)");
+
+            // [수정] 헤더에 SEN0546 온도 추가 (PT100과 습도 사이)
+            _logWriter.WriteLine("PC시간,현재 온도(PT100)(°C),현재 온도(SEN0546)(°C),현재 습도(%),타겟 온도(°C),파워(%)");
 
             var interval = _settings.Settings.LoggingIntervalSeconds * 1000;
             _loggingTimer = new Timer(LogData, null, interval, interval);
@@ -139,16 +140,16 @@ public class PeltierService : IDisposable
     private void LogData(object? state)
     {
         if (_logWriter == null) return;
-
-        // 데이터 보호(Lock) 상태에서 복사
         var data = Current;
 
         try
         {
-            _logWriter.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss},{data.Pt100:F1},{data.Set},{data.Hum:F1},{data.Pwr}");
+            // [수정] 데이터 줄에 data.SenT 추가 (PT100과 습도 사이)
+            _logWriter.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss},{data.Pt100:F1},{data.SenT:F1},{data.Hum:F1},{data.Set:F1},{data.Pwr}");
             _logWriter.Flush();
         }
-        catch { }
+        catch {
+        }
     }
 
     private void StopLogging()

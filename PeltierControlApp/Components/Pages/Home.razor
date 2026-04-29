@@ -14,16 +14,24 @@
 
         <div class="card-body bg-white p-4">
             <div class="row g-3 mb-4">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="p-4 border rounded-3 bg-light text-center shadow-sm">
                         <p class="text-muted mb-1 small fw-bold">현재 온도 (PT100)</p>
-                        <h1 class="display-3 fw-bold text-primary mb-0">@Service.Current.Pt100.ToString("F1")<span class="fs-4">°C</span></h1>
+                        <h1 class="display-4 fw-bold text-primary mb-0">@Service.Current.Pt100.ToString("F1")<span class="fs-5">°C</span></h1>
                     </div>
                 </div>
-                <div class="col-md-6">
+
+                <div class="col-md-4">
+                    <div class="p-4 border rounded-3 bg-light text-center shadow-sm">
+                        <p class="text-muted mb-1 small fw-bold">현재 온도 (SEN0546)</p>
+                        <h1 class="display-4 fw-bold text-success mb-0">@Service.Current.SenT.ToString("F1")<span class="fs-5">°C</span></h1>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
                     <div class="p-4 border rounded-3 bg-light text-center shadow-sm">
                         <p class="text-muted mb-1 small fw-bold">현재 습도 (SEN0546)</p>
-                        <h1 class="display-3 fw-bold text-info mb-0">@Service.Current.Hum.ToString("F0")<span class="fs-4">%</span></h1>
+                        <h1 class="display-4 fw-bold text-info mb-0">@Service.Current.Hum.ToString("F0")<span class="fs-5">%</span></h1>
                     </div>
                 </div>
             </div>

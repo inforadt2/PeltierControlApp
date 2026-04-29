@@ -1,6 +1,8 @@
-using System.IO.Ports;
-using System.Text.Json;
+using System.IO;
 using PeltierControlApp.Models;
+using System.IO.Ports;
+using System.Reflection.Metadata;
+using System.Text.Json;
 
 namespace PeltierControlApp.Services;
 
@@ -9,32 +11,67 @@ public class PeltierService : IDisposable
     private SerialPort? _port;
     private readonly SettingsService _settings;
     private Timer? _loggingTimer;
-    private string? _currentLogFile;
+    private StreamWriter? _logWriter;
+    private readonly object _dataLock = new();
+    private readonly CancellationTokenSource _cts = new(); // 종료 신호용
 
-    public PeltierData Current { get; private set; } = new();
+    private PeltierData _current = new();
+    public PeltierData Current
+    {
+        get { lock (_dataLock) return _current; }
+        private set { lock (_dataLock) _current = value; }
+    }
+
     public event Action? OnDataUpdated;
     public bool IsLogging { get; private set; }
 
     public PeltierService(SettingsService settings)
     {
         _settings = settings;
-        try
+        Task.Run(() => ConnectionLoop(_cts.Token)); // 토큰 전달
+    }
+
+    private async Task ConnectionLoop(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
         {
-            _port = new SerialPort(_settings.Settings.ComPort, 9600);
-            _port.ReadTimeout = 2000;
-            _port.Open();
-            _port.DiscardInBuffer();
-            _port.DataReceived += HandleData;
+            try
+            {
+                // 포트가 없거나 닫혀있으면 연결 시도
+                if (_port == null || !_port.IsOpen)
+                {
+                    // 이전 포트 객체 정리
+                    if (_port != null)
+                    {
+                        try { _port.DataReceived -= HandleData; _port.Dispose(); } catch { }
+                        _port = null;
+                    }
+
+                    _port = new SerialPort(_settings.Settings.ComPort, 9600);
+                    _port.ReadTimeout = 3000;
+                    _port.NewLine = "\n";
+                    _port.Open();
+                    _port.DiscardInBuffer();
+                    _port.DataReceived += HandleData;
+
+                    System.Diagnostics.Debug.WriteLine("아두이노 연결 성공");
+                }
+            }
+            catch
+            {
+                System.Diagnostics.Debug.WriteLine("아두이노 연결 대기 중...");
+            }
+
+            // 5초 대기 (종료 신호가 오면 즉시 대기 중단)
+            try { await Task.Delay(5000, token); } catch { break; }
         }
-        catch { }
     }
 
     private void HandleData(object sender, SerialDataReceivedEventArgs e)
     {
+        if (_port == null || !_port.IsOpen) return;
         try
         {
-            if (_port == null || !_port.IsOpen) return;
-
             string line = _port.ReadLine().Trim();
             int startIndex = line.IndexOf('{');
             if (startIndex == -1) return;
@@ -48,7 +85,6 @@ public class PeltierService : IDisposable
                 OnDataUpdated?.Invoke();
             }
         }
-        catch (TimeoutException) { }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Serial Error: {ex.Message}");
@@ -78,56 +114,59 @@ public class PeltierService : IDisposable
     private void StartLogging()
     {
         var folder = _settings.Settings.LoggingFolder;
-        try { Directory.CreateDirectory(folder); }
+        // 경로가 절대 경로가 아닐 경우를 대비해 루트 경로 결합
+        var fullPath = Path.IsPathRooted(folder) ? folder : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, folder);
+
+        try
+        {
+            Directory.CreateDirectory(fullPath);
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var filePath = Path.Combine(fullPath, $"peltier_{timestamp}.csv");
+
+            _logWriter = new StreamWriter(filePath, true, System.Text.Encoding.UTF8);
+            _logWriter.WriteLine("PC시간,현재 온도(°C),타겟 온도(°C),현재 습도(%),파워(%)");
+
+            var interval = _settings.Settings.LoggingIntervalSeconds * 1000;
+            _loggingTimer = new Timer(LogData, null, interval, interval);
+            IsLogging = true;
+        }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Logging folder error: {ex.Message}");
-            return;
+            System.Diagnostics.Debug.WriteLine($"Log Init Error: {ex.Message}");
         }
-
-        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        _currentLogFile = Path.Combine(folder, $"peltier_{timestamp}.csv");
-
-        // 헤더 작성
-        File.WriteAllText(_currentLogFile, "PC시간,현재 온도(°C),타겟 온도(°C),현재 습도(%),파워(%)\n", System.Text.Encoding.UTF8);
-
-        var interval = _settings.Settings.LoggingIntervalSeconds * 1000;
-        _loggingTimer = new Timer(LogData, null, interval, interval);
-        IsLogging = true;
     }
 
     private void LogData(object? state)
     {
-        if (_currentLogFile == null) return;
+        if (_logWriter == null) return;
+
+        // 데이터 보호(Lock) 상태에서 복사
+        var data = Current;
+
         try
         {
-            var line = string.Join(",", [
-                DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                Current.Pt100.ToString("F1"),
-                Current.Set.ToString(),
-                Current.Hum.ToString("F1"),
-                Current.Pwr.ToString()
-            ]) + "\n";
-            File.AppendAllText(_currentLogFile, line, System.Text.Encoding.UTF8);
+            _logWriter.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss},{data.Pt100:F1},{data.Set},{data.Hum:F1},{data.Pwr}");
+            _logWriter.Flush();
         }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Logging write error: {ex.Message}");
-        }
+        catch { }
     }
 
     private void StopLogging()
     {
         _loggingTimer?.Dispose();
         _loggingTimer = null;
+        _logWriter?.Dispose(); // 파일 닫기
+        _logWriter = null;
         IsLogging = false;
-        Console.WriteLine($"Log saved: {_currentLogFile}");
-        _currentLogFile = null;
     }
 
     public void Dispose()
     {
+        _cts.Cancel(); // 백그라운드 루프 안전하게 종료
         StopLogging();
-        _port?.Dispose();
+        if (_port != null)
+        {
+            try { _port.DataReceived -= HandleData; _port.Dispose(); } catch { }
+        }
     }
 }

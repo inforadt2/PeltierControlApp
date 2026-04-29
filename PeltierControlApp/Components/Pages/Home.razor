@@ -1,18 +1,34 @@
 @page "/"
 @using PeltierControlApp.Services
+@using Microsoft.AspNetCore.Http
 @inject PeltierService Service
-@inject SettingsService SettingsService
+@inject SettingsService ConfigService
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IJSRuntime JS
 @implements IDisposable
 
-<PageTitle>펠티어 제어 대시보드</PageTitle>
-
 <div class="container py-4">
-    <div class="card border-0 shadow-sm overflow-hidden">
-        <div class="card-header bg-primary text-white py-3">
-            <h5 class="mb-0 fw-bold text-center">🌡️ 실시간 상태 모니터링</h5>
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">🌡️ 실시간 상태 모니터링</h5>
+            @if (Service.IsConnected)
+            {
+                <span class="badge bg-success">● 장치 연결됨</span>
+            }
+            else
+            {
+                <span class="badge bg-danger">● 장치 미연결</span>
+            }
         </div>
 
-        <div class="card-body bg-white p-4">
+        <div class="card-body">
+            @if (!Service.IsConnected)
+            {
+                <div class="alert alert-warning text-center fw-bold">
+                    ⚠️ 장치가 연결되지 않았습니다. 포트 상태를 확인하세요. (로깅 중단됨)
+                </div>
+            }
+
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
                     <div class="p-4 border rounded-3 bg-light text-center shadow-sm">
@@ -55,7 +71,7 @@
             {
                 <div class="alert alert-success d-flex align-items-center gap-2 py-2 mb-3">
                     <span class="spinner-grow spinner-grow-sm text-success" role="status"></span>
-                    <span class="small fw-bold">로깅 중 — @SettingsService.Settings.LoggingFolder</span>
+                    <span class="small fw-bold">로깅 중 — @ConfigService.Settings.LoggingFolder</span>
                     <button class="btn btn-sm btn-outline-success ms-auto" @onclick="OpenLogFolder">📂 폴더 보기</button>
                 </div>
             }
@@ -63,35 +79,54 @@
             <div class="p-4 border-top">
                 <div class="row g-3 align-items-end justify-content-center">
                     <div class="col-md-5">
-                        <label class="form-label small fw-bold text-dark">목표 온도 설정 (°C)</label>
-                        <input type="number" @bind="inputTarget" class="form-control form-control-lg border-primary text-center" step="0.5" />
+                        <label class="form-label small fw-bold">목표 온도 설정 (10°C ~ 35°C)</label>
+                        <input type="number" @bind="inputTarget" class="form-control"
+                               disabled="@(!Service.IsConnected)" step="0.5" />
                     </div>
                     <div class="col-md-4">
                         @if (Service.Current.Set == 0)
                         {
-                            <button class="btn btn-success btn-lg w-100 py-3 fw-bold shadow-sm" @onclick="HandleStart">
+                            <button class="btn btn-success btn-lg w-100"
+                                    @onclick="() => OnControlAction(HandleStart)"
+                                    disabled="@(!Service.IsConnected)">
                                 ▶️ 가동 시작
                             </button>
                         }
                         else
                         {
-                            <button class="btn btn-danger btn-lg w-100 py-3 fw-bold shadow-sm" @onclick="HandleStop">
+                            <button class="btn btn-danger btn-lg w-100"
+                                    @onclick="() => OnControlAction(HandleStop)"
+                                    disabled="@(!Service.IsConnected)">
                                 ⏹️ 가동 정지
                             </button>
                         }
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
 
 @code {
     private double inputTarget = 20.0;
+    private string userIp => HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
 
-    protected override void OnInitialized()
+    // 5. 제어권 확인 로직
+    private async Task OnControlAction(Action action)
     {
-        Service.OnDataUpdated += NotifyDataChanged;
+        // 현재 제어 중인 IP가 있고, 내 IP와 다른 경우 확인 창 표시
+        if (!string.IsNullOrEmpty(Service.ControllerIp) && Service.ControllerIp != userIp)
+        {
+            bool confirm = await JS.InvokeAsync<bool>("confirm",
+                $"현재 다른 PC({Service.ControllerIp})에서 장치를 제어 중입니다. 제어권을 해제하고 현재 PC에서 컨트롤 하시겠습니까?");
+
+            if (!confirm) return;
+        }
+
+        // 제어권 획득 및 액션 실행
+        Service.TakeControl(userIp);
+        action.Invoke();
     }
 
     private async void NotifyDataChanged()
@@ -101,6 +136,12 @@
 
     private void HandleStart()
     {
+        // 3. 온도 범위 제한 (10도 ~ 35도)
+        if (inputTarget < 10 || inputTarget > 35)
+        {
+            JS.InvokeVoidAsync("alert", "설정 온도는 10°C에서 35°C 사이여야 합니다.");
+            return;
+        }
         Service.SetTarget(inputTarget);
         Service.StartDevice();
     }
@@ -114,7 +155,7 @@
 
     private void OpenLogFolder()
     {
-        var folder = SettingsService.Settings.LoggingFolder;
+        var folder = ConfigService.Settings.LoggingFolder;
         try
         {
             if (!Directory.Exists(folder))

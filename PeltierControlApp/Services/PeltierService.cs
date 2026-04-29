@@ -31,6 +31,17 @@ public class PeltierService : IDisposable
         Task.Run(() => ConnectionLoop(_cts.Token)); // 토큰 전달
     }
 
+    private string? _controllerIp; // 현재 제어 중인 IP 주소
+
+    // 1. 포트 연결 상태 프로퍼티
+    public bool IsConnected => _port?.IsOpen ?? false;
+
+    // 제어권 관리 프로퍼티
+    public string? ControllerIp => _controllerIp;
+
+    // 제어권 획득 메서드
+    public void TakeControl(string ip) => _controllerIp = ip;
+
     private async Task ConnectionLoop(CancellationToken token)
     {
         while (!token.IsCancellationRequested)
@@ -144,12 +155,11 @@ public class PeltierService : IDisposable
 
         try
         {
-            // [수정] 데이터 줄에 data.SenT 추가 (PT100과 습도 사이)
+            // 4. 타겟 온도(Set) 소수점 1자리(F1) 포맷 지정
             _logWriter.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss},{data.Pt100:F1},{data.SenT:F1},{data.Hum:F1},{data.Set:F1},{data.Pwr}");
             _logWriter.Flush();
         }
-        catch {
-        }
+        catch { }
     }
 
     private void StopLogging()

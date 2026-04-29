@@ -79,7 +79,7 @@
             <div class="p-4 border-top">
                 <div class="row g-3 align-items-end justify-content-center">
                     <div class="col-md-5">
-                        <label class="form-label small fw-bold">목표 온도 설정 (10°C ~ 35°C)</label>
+                        <label class="form-label small fw-bold">목표 온도 설정 (5°C ~ 35°C)</label>
                         <input type="number" @bind="inputTarget" class="form-control"
                                disabled="@(!Service.IsConnected)" step="0.5" />
                     </div>
@@ -143,9 +143,9 @@
     private void HandleStart()
     {
         // 3. 온도 범위 제한 (10도 ~ 35도)
-        if (inputTarget < 10 || inputTarget > 35)
+        if (inputTarget < 5 || inputTarget > 35)
         {
-            JS.InvokeVoidAsync("alert", "설정 온도는 10°C에서 35°C 사이여야 합니다.");
+            JS.InvokeVoidAsync("alert", "설정 온도는 5°C에서 35°C 사이여야 합니다.");
             return;
         }
         Service.SetTarget(inputTarget);

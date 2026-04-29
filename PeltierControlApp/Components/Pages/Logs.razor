@@ -58,12 +58,16 @@
     private void LoadFiles()
     {
         var folder = SettingsService.Settings.LoggingFolder;
-        if (!Directory.Exists(folder))
+        var fullPath = Path.IsPathRooted(folder)
+            ? folder
+            : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, folder);
+
+        if (!Directory.Exists(fullPath))
         {
             files = [];
             return;
         }
-        files = new DirectoryInfo(folder)
+        files = new DirectoryInfo(fullPath)
             .GetFiles("peltier_*.csv")
             .OrderByDescending(f => f.LastWriteTime)
             .ToList();

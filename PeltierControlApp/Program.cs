@@ -5,7 +5,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Listen(System.Net.IPAddress.Any, 8085);
+    options.Listen(System.Net.IPAddress.Any, 8085);                          // HTTP (네트워크)
+    options.Listen(System.Net.IPAddress.Loopback, 7073, o => o.UseHttps()); // HTTPS (로컬)
 });
 
 builder.Services.AddRazorComponents()
@@ -30,7 +31,7 @@ app.Lifetime.ApplicationStarted.Register(() =>
         await Task.Delay(500);
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
         {
-            FileName = "http://localhost:8085",
+            FileName = "https://localhost:7073",
             UseShellExecute = true
         });
     });

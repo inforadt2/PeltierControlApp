@@ -53,8 +53,11 @@
     private List<string[]> rows = [];
     private string? errorMessage;
 
-    protected override void OnInitialized()
+    protected override void OnParametersSet()
     {
+        rows = [];
+        errorMessage = null;
+
         if (string.IsNullOrWhiteSpace(FileName))
         {
             errorMessage = "파일명이 지정되지 않았습니다.";

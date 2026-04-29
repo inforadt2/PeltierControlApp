@@ -61,6 +61,11 @@ public class PeltierService : IDisposable
                     _port = new SerialPort(_settings.Settings.ComPort, 9600);
                     _port.ReadTimeout = 3000;
                     _port.NewLine = "\n";
+
+                    // 👇 아두이노 통신을 위해 반드시 추가해야 하는 두 줄입니다.
+                    _port.DtrEnable = true;
+                    _port.RtsEnable = true;
+
                     _port.Open();
                     _port.DiscardInBuffer();
                     _port.DataReceived += HandleData;

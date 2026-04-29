@@ -20,16 +20,15 @@ DallasTemperature sensors(&oneWire);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 double Setpoint = 0.0, Input, Output;
 
-// [튜닝] Kp는 낮추고, Ki는 아주 작게, Kd는 높여서 브레이크를 강하게 잡습니다.
-double Kp = 8.0;  
-double Ki = 0.05; 
-double Kd = 15.0;
+double Kp = 12.0;  
+double Ki = 0.1; 
+double Kd = 20.0;
 
-// [수정] SEN0546(SHT31) 온도를 저장할 변수(tempSHT) 추가
 float tempPT100 = 0.0, humidity = 0.0, tempDS = 0.0, tempSHT = 0.0;
 bool isSystemOn = false; 
 int currentPower = 0;
-int powerRampStep = 10; // 반응 속도를 위해 램프 단계를 높임
+int powerRampStep = 15;
+int lastDirection = 0;  // 1=쿨링, -1=히팅, 0=정지
 unsigned long lastUpdate = 0;
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
@@ -67,7 +66,6 @@ void loop() {
     tempDS = sensors.getTempCByIndex(0);
     sensors.requestTemperatures();
     
-    // [수정] 습도와 함께 온도도 측정하여 변수에 저장
     float h = sht31.readHumidity();
     float t = sht31.readTemperature();
     if (!isnan(h)) humidity = h;
@@ -75,10 +73,10 @@ void loop() {
 
     if (isSystemOn) {
       Input = tempPT100;
-      // [핵심] 목표 온도보다 낮아지면(오버슈트 발생 시) PID 적분항을 강제로 억제
+
       if (Input < Setpoint && Output < 0) {
          myPID.SetMode(MANUAL);
-         Output = Output * 0.2; // 출력을 20% 수준으로 급감
+         Output = Output * 0.2;
          myPID.SetMode(AUTOMATIC);
       }
 
@@ -93,21 +91,39 @@ void loop() {
 }
 
 void controlPeltier(double targetOut) {
+  bool newCooling = targetOut > 1.0;
+  bool newHeating = targetOut < -1.0;
+
+  // 방향 전환 감지: 현재 반대 방향으로 전환 요청 시 먼저 0으로 감속
+  if ((newCooling && lastDirection == -1) || (newHeating && lastDirection == 1)) {
+    currentPower -= powerRampStep;
+    if (currentPower <= 0) {
+      currentPower = 0;
+      lastDirection = 0;  // 0이 되면 방향 초기화 → 다음 루프에서 정상 진입
+    }
+    analogWrite(RPWM_PIN, 0);
+    analogWrite(LPWM_PIN, 0);
+    return;  // 0될 때까지 대기
+  }
+
+  // 정상 제어
   int absPower = (int)abs(targetOut);
   if (currentPower < absPower) currentPower += powerRampStep;
   else if (currentPower > absPower) currentPower -= powerRampStep;
   currentPower = constrain(currentPower, 0, 255);
 
-  // 배선을 바꾸셨으므로 현재 방향에 맞춰 작동
-  if (targetOut > 1.0) { 
+  if (newCooling) {
+    lastDirection = 1;
     analogWrite(RPWM_PIN, 0); 
     analogWrite(LPWM_PIN, currentPower); 
   } 
-  else if (targetOut < -1.0) { 
+  else if (newHeating) {
+    lastDirection = -1;
     analogWrite(RPWM_PIN, currentPower); 
     analogWrite(LPWM_PIN, 0); 
   } 
   else {
+    lastDirection = 0;
     stopPeltier();
   }
 }
@@ -115,14 +131,14 @@ void controlPeltier(double targetOut) {
 void stopPeltier() {
   analogWrite(RPWM_PIN, 0); analogWrite(LPWM_PIN, 0);
   currentPower = 0;
-  Output = 0; // PID 출력 초기화
+  lastDirection = 0;
+  Output = 0;
 }
 
 void sendJson() {
   int pwrPercent = map(currentPower, 0, 255, 0, 100);
   Serial.print("{\"pt100\":"); Serial.print(tempPT100, 1);
   Serial.print(",\"hum\":"); Serial.print(humidity, 1);
-  // [수정] SEN0546(SHT31) 온도(senT)를 JSON 데이터에 추가
   Serial.print(",\"senT\":"); Serial.print(tempSHT, 1); 
   Serial.print(",\"ds\":"); Serial.print(tempDS, 1);
   Serial.print(",\"set\":"); Serial.print(Setpoint, 1);
@@ -141,7 +157,6 @@ void updateLCD() {
     lcd.clear();
   }
 
-  // [유지] 디스플레이는 변경하지 않음
   lcd.setCursor(0, 0);
   lcd.print("P:"); lcd.print(tempPT100, 1);
   lcd.print(" SV:"); lcd.print(Setpoint, 1);

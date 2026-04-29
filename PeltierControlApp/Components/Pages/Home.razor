@@ -86,11 +86,20 @@
                     <div class="col-md-4">
                         @if (Service.Current.Set == 0)
                         {
-                            <button class="btn btn-success btn-lg w-100"
-                                    @onclick="() => OnControlAction(HandleStart)"
-                                    disabled="@(!Service.IsConnected)">
-                                ▶️ 가동 시작
-                            </button>
+                            @if (CooldownRemaining > 0)
+                            {
+                                <button class="btn btn-secondary btn-lg w-100" disabled>
+                                    ⏳ 재가동 대기 (@CooldownRemaining초)
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-success btn-lg w-100"
+                                        @onclick="() => OnControlAction(HandleStart)"
+                                        disabled="@(!Service.IsConnected)">
+                                    ▶️ 가동 시작
+                                </button>
+                            }
                         }
                         else
                         {
@@ -111,6 +120,10 @@
 @code {
     private double inputTarget = 20.0;
     private string userIp = "Unknown";
+    private DateTime? _stopTime = null;
+    private int CooldownRemaining => _stopTime.HasValue
+        ? Math.Max(0, 10 - (int)(DateTime.Now - _stopTime.Value).TotalSeconds)
+        : 0;
 
     protected override void OnInitialized()
     {
@@ -156,6 +169,7 @@
     {
         Service.StopDevice();
         Service.Current.Set = 0;
+        _stopTime = DateTime.Now;
         StateHasChanged();
     }
 
